@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lights Out</title>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: #06111e;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Fixed design canvas: 1456 × 816 ────────── */
+    #canvas {
+      width: 1456px; height: 816px;
+      position: relative;
+      transform-origin: center center;
+      background: url('assets/Background.png') center / cover no-repeat;
+      overflow: hidden;
+    }
+
+    /* ── Animations ──────────────────────────────── */
+    @keyframes fadeIn   { from { opacity:0; transform:translateY(6px); }  to { opacity:1; transform:translateY(0); } }
+    @keyframes popIn    { from { opacity:0; transform:scale(0.45); }       to { opacity:1; transform:scale(1); } }
+    @keyframes shake    { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);} 40%{transform:translateX(8px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(5px);} }
+    @keyframes hintGlow { 0%,100%{filter:brightness(1)   drop-shadow(0 0 6px rgba(0,229,255,.5));} 50%{filter:brightness(1.15) drop-shadow(0 0 18px rgba(0,229,255,1));} }
+    @keyframes pulse    { 0%,100%{filter:brightness(1);}  50%{filter:brightness(1.28) drop-shadow(0 0 14px #4afa7c);} }
+    @keyframes float    { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+    @keyframes slideUp  { from{opacity:0;transform:translateY(32px);} to{opacity:1;transform:translateY(0);} }
+
+    /* ════════════════════════════════════════════
+       QUESTION SCREEN
+    ════════════════════════════════════════════ */
+
+    /* Bot text bar */
+    #bot-bar {
+      position: absolute;
+      left: 38px; top: 28px;
+      width: 1334px; height: 107px;
+      background: url('assets/Text box.png') center / 100% 100% no-repeat;
+      display: flex; align-items: center;
+      /* leave ~105px for the embedded robot face on the left of the image */
+      padding-left: 122px; padding-right: 24px;
+    }
+    #bot-text {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 28px; font-weight: 700;
+      color: #dff4f8;
+      text-shadow: 0 0 10px rgba(0,200,230,.5);
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    /* Main panel */
+    #main-panel {
+      position: absolute;
+      left: 38px; top: 162px;
+      width: 1305px; height: 602px;
+      background: url('assets/swtich holder.png') center / 100% 100% no-repeat;
+    }
+
+    /* Switch row – sits in the upper portion of the panel */
+    #switch-row {
+      position: absolute;
+      left: 0; top: 42px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 52px;
+    }
+
+    /* Power button */
+    .power-btn {
+      width: 143px;
+      height: 125px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .power-btn.pulsing { animation: pulse 1.2s ease-in-out infinite; }
+
+    /* Switch tile – filled / empty / state variants */
+    .sw {
+      width: 102px; height: 126px;
+      flex-shrink: 0;
+      border-radius: 8px;
+    }
+    .sw img {
+      width: 100%; height: 100%;
+      object-fit: fill;
+      display: block;
+      border-radius: 8px;
+    }
+
+    .sw.filled img  { animation: fadeIn 0.3s ease both; }
+    .sw.new    img  { animation: popIn  0.4s ease both; }
+
+    .sw.empty {
+      background: rgba(38, 40, 52, 0.45);
+      border: 2px dashed rgba(180, 110, 30, 0.55);
+    }
+    .sw.empty.next-slot {
+      background: rgba(20, 22, 34, 0.55);
+      border: 3px dashed #e08828;
+      box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 8px rgba(220,136,40,.3);
+    }
+
+    .sw.wrong { animation: shake 0.45s ease; }
+    .sw.wrong img {
+      border: 3px solid #ff3333;
+      box-shadow: 0 0 18px rgba(255,50,50,.7);
+      border-radius: 8px;
+    }
+
+    /* Completed-row switch styling (cyan outline on all 8) */
+    .sw.complete-fill img {
+      border: 2px solid rgba(80, 215, 255, 0.65);
+      box-shadow: 0 0 10px rgba(0, 200, 220, .4);
+      border-radius: 8px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    /* Panel green-glow state for row-complete */
+    @keyframes greenBorderPulse {
+      0%,100% { box-shadow: 0 0 0 4px #4afa7c, 0 0 35px rgba(74,250,124,.55), 0 0 80px rgba(74,250,124,.22); }
+      50%     { box-shadow: 0 0 0 4px #4afa7c, 0 0 62px rgba(74,250,124,.88), 0 0 130px rgba(74,250,124,.42); }
+    }
+
+    #main-panel.row-complete {
+      top: 40px;
+      height: 736px;
+      border-radius: 22px;
+      animation: greenBorderPulse 1.2s ease-in-out infinite;
+      transition: top 0.35s ease, height 0.35s ease;
+    }
+
+    /* Vertically center the switch row inside the enlarged panel */
+    #main-panel.row-complete #switch-row {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    /* Blur switches behind the Well done text */
+    #main-panel.row-complete #switch-row {
+      filter: blur(3.5px);
+      opacity: 0.55;
+      transition: filter 0.3s ease, opacity 0.3s ease;
+    }
+
+    /* Well done overlay */
+    #well-done-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Exo 2', sans-serif;
+      font-size: 100px;
+      font-weight: 900;
+      color: #00e8ff;
+      letter-spacing: 2px;
+      text-shadow: 0 0 40px rgba(0,232,255,.7), 0 0 80px rgba(0,200,255,.35), 0 4px 0 rgba(0,0,0,.45);
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+      animation: wellDonePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    #well-done-msg.hidden { display: none !important; }
+
+    @keyframes wellDonePop {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    /* Wrong answer message */
+    #wrong-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -58%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 10;
+      animation: wrongPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    #wrong-msg.hidden { display: none !important; }
+
+    @keyframes wrongPop {
+      from { opacity: 0; transform: translate(-50%, -48%) scale(0.7); }
+      to   { opacity: 1; transform: translate(-50%, -58%) scale(1); }
+    }
+
+    #wrong-msg .wrong-icon {
+      font-size: 52px;
+      line-height: 1;
+      filter: drop-shadow(0 0 14px rgba(255, 60, 60, 0.8));
+      animation: wrongBounce 0.5s ease both;
+    }
+    @keyframes wrongBounce {
+      0%   { transform: scale(0.5) rotate(-10deg); }
+      60%  { transform: scale(1.15) rotate(4deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    #wrong-msg .wrong-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      letter-spacing: 3px;
+      color: #ff4444;
+      text-shadow: 0 0 24px rgba(255, 60, 60, 0.7), 0 2px 0 rgba(0,0,0,.5);
+    }
+    #wrong-msg .wrong-sub {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: rgba(255, 200, 200, 0.85);
+      text-shadow: 0 0 10px rgba(255, 80, 80, 0.5);
+      letter-spacing: 1px;
+    }
+
+    /* Options area */
+    #options-area {
+      position: absolute;
+      left: 50%;   bottom: 56px;
+      transform: translateX(-50%);
+      width: 580px; height: 168px;
+      background: url('assets/Option placeholder.png') center / 100% 100% no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+    }
+    #options-area.invisible { visibility: hidden; }
+
+    /* Option switch tiles (same size as row switches) */
+    .sw.option {
+      cursor: pointer;
+      transition: transform 0.13s;
+    }
+    .sw.option img {
+      border: 2.5px solid #00c8d4;
+      box-shadow: 0 0 10px rgba(0,200,212,.55);
+      border-radius: 8px;
+    }
+    .sw.option:hover               { transform: scale(1.08); }
+    .sw.option:hover img           { box-shadow: 0 0 22px rgba(0,229,255,.9); }
+
+    .sw.hint { cursor: pointer; animation: hintGlow 1s ease-in-out infinite; }
+    .sw.hint img {
+      border: 2.5px solid #00e5ff;
+      border-radius: 8px;
+    }
+    .sw.hint:hover { transform: scale(1.08); }
+
+    /* ════════════════════════════════════════════
+       INTRO / LEVEL / COMPLETE SCREENS
+       (centred overlay on top of the background)
+    ════════════════════════════════════════════ */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .title-xl {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 80px; letter-spacing: 6px;
+      color: #00e5ff;
+      text-shadow: 0 0 36px rgba(0,229,255,.55);
+    }
+    .title-green {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 80px; letter-spacing: 6px;
+      color: #4afa7c;
+      text-shadow: 0 0 36px rgba(74,250,124,.55);
+    }
+    .level-float { animation: float 2s ease-in-out infinite; }
+
+    .body-text {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 20px; color: rgba(200,215,225,.65);
+      text-align: center; line-height: 1.65;
+    }
+
+    .score-box {
+      display: flex; gap: 48px;
+      padding: 18px 48px;
+      background: rgba(0,18,28,.6);
+      border: 1px solid rgba(0,200,220,.22);
+      border-radius: 14px;
+    }
+    .score-box .s-lbl { font-family:'Exo 2',sans-serif; font-size:14px; color:rgba(200,210,220,.5); margin-bottom:4px; }
+    .score-box .s-val { font-family:'Bebas Neue',sans-serif; font-size:52px; }
+    .gold  { color: #ffc83d; }
+    .green { color: #4afa7c; }
+
+    .btn-primary {
+      padding: 16px 60px; font-size: 24px; font-weight: 800;
+      font-family: 'Exo 2', sans-serif;
+      background: linear-gradient(135deg, #00b8c4 0%, #00d4a8 100%);
+      color: #fff; border: none; border-radius: 14px;
+      cursor: pointer; letter-spacing: 1px;
+      box-shadow: 0 4px 22px rgba(0,200,180,.42), inset 0 1px 0 rgba(255,255,255,.2);
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .btn-primary:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(0,200,180,.6); }
+
+    .btn-secondary {
+      padding: 14px 50px; font-size: 22px; font-weight: 700;
+      font-family: 'Exo 2', sans-serif;
+      background: rgba(0,200,220,.14);
+      color: #00e5ff;
+      border: 1.5px solid #00c8d4; border-radius: 12px;
+      cursor: pointer; letter-spacing: 1px;
+      transition: background 0.18s;
+    }
+    .btn-secondary:hover { background: rgba(0,200,220,.28); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="canvas">
+
+  <!-- ── INTRO ─────────────────────────────────── -->
+  <div id="screen-intro" class="overlay">
+    <div class="title-xl">⚡ LIGHTS OUT</div>
+    <p class="body-text">
+      Complete number patterns to power up each row.<br>
+      Fill all 8 switches to bring the lights back on!
+    </p>
+    <button class="btn-primary" onclick="handleStart()">Let's Play ▶</button>
+  </div>
+
+  <!-- ── LEVEL INTRO ───────────────────────────── -->
+  <div id="screen-level" class="overlay hidden">
+    <div id="level-name" class="title-xl level-float"></div>
+    <div id="level-sub"  class="body-text"></div>
+    <button class="btn-secondary" onclick="handleLevelStart()">Start →</button>
+  </div>
+
+  <!-- ── QUESTION ──────────────────────────────── -->
+  <div id="screen-question" class="hidden">
+    <div id="bot-bar">
+      <span id="bot-text">Tap the correct switch.</span>
+    </div>
+    <div id="main-panel">
+      <div id="switch-row"></div>
+      <div id="well-done-msg" class="hidden">Well done!</div>
+      <div id="wrong-msg" class="hidden">
+      </div>
+      <div id="options-area"></div>
+    </div>
+  </div>
+
+  <!-- ── COMPLETE ──────────────────────────────── -->
+  <div id="screen-complete" class="overlay hidden">
+    <div class="title-green">Well Done! ⚡</div>
+    <p class="body-text">All systems powered up!</p>
+    <div class="score-box">
+      <div>
+        <div class="s-lbl">Final Score</div>
+        <div id="final-score" class="s-val gold">0</div>
+      </div>
+      <div>
+        <div class="s-lbl">Best Streak</div>
+        <div id="final-streak" class="s-val green">0🔥</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="resetGame()">Play Again ↻</button>
+  </div>
+
+</div><!-- #canvas -->
+
+<script>
+  /* ── SFX (Web Audio API — no external files) ─────── */
+  let _ctx = null;
+  function ac() {
+    if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return _ctx;
+  }
+
+  function sfxHover() {
+    const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(1100, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.06, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.07);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.07);
+  }
+
+  function sfxClick() {
+    const ctx = ac();
+    /* body click thud */
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.012));
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.35, ctx.currentTime);
+    src.start(ctx.currentTime);
+    /* tonal click layer */
+    const o = ctx.createOscillator(), g2 = ctx.createGain();
+    o.connect(g2); g2.connect(ctx.destination);
+    o.type = 'square';
+    o.frequency.setValueAtTime(520, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.08);
+    g2.gain.setValueAtTime(0.12, ctx.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.1);
+  }
+
+  function sfxWrong() {
+    const ctx = ac();
+    [0, 0.13, 0.26].forEach((t, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(180 - i * 30, ctx.currentTime + t);
+      o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + t + 0.12);
+      g.gain.setValueAtTime(0.18, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.14);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.14);
+    });
+  }
+
+  function sfxCorrect() {
+    const ctx = ac();
+    [523, 659, 784].forEach((freq, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.14, ctx.currentTime + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.1 + 0.22);
+      o.start(ctx.currentTime + i * 0.1); o.stop(ctx.currentTime + i * 0.1 + 0.22);
+    });
+  }
+
+  function sfxRowComplete() {
+    const ctx = ac();
+    [523, 659, 784, 1047].forEach((freq, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.16, ctx.currentTime + i * 0.09);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.09 + 0.28);
+      o.start(ctx.currentTime + i * 0.09); o.stop(ctx.currentTime + i * 0.09 + 0.28);
+    });
+  }
+
+  /* ── Scale canvas to fit viewport ─────────────── */
+  function scaleCanvas() {
+    const el = document.getElementById('canvas');
+    const s  = Math.min(window.innerWidth / 1456, window.innerHeight / 816);
+    el.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', scaleCanvas);
+  scaleCanvas();
+
+  /* ── Asset map ─────────────────────────────────── */
+  const SWITCH_IMG = {
+    1:  'assets/switch 1.png',
+    2:  'assets/swtich 2.png',
+    3:  'assets/switch 3.png',
+    4:  'assets/switch 4.png',
+    5:  'assets/swcite 5.png',
+    6:  'assets/swcite 6.png',
+    7:  'assets/swcite 7.png',
+    8:  'assets/swcite 8.png',
+    9:  'assets/swcite 9.png',
+    10: 'assets/swcite 10.png',
+    11: 'assets/swcite 11.png',
+    12: 'assets/swcite 12.png',
+    13: 'assets/swcite 13.png',
+  };
+
+  /* ── Game config ───────────────────────────────── */
+  const ROWS_CONFIG = [
+    { pattern: [3, 5],   options: [3, 6, 5, 4],    label: 'Tutorial' },
+    { pattern: [4, 7],   options: [4, 5, 8, 7],    label: 'Level 2'  },
+    { pattern: [7, 10],  options: [10, 9, 11, 7],  label: 'Level 3'  },
+    { pattern: [11, 13], options: [13, 12, 11, 10], label: 'Level 4' },
+  ];
+  const TOTAL = 8, PREFILLED = 5;
+
+  /* ── State ─────────────────────────────────────── */
+  let phase       = 'intro';
+  let currentRow  = 0;
+  let grid        = [];
+  let wrongCount  = 0;
+  let wrongAnswer = null;
+  let showHint    = false;
+  let score       = 0;
+  let streak      = 0;
+  let timer       = null;
+
+  function initGrid() {
+    grid = ROWS_CONFIG.map(r => {
+      const full = [];
+      for (let i = 0; i < TOTAL; i++) full.push(r.pattern[i % r.pattern.length]);
+      return full.slice(0, PREFILLED);
+    });
+  }
+
+  function getCorrect(pattern, filledCount) {
+    return pattern[filledCount % pattern.length];
+  }
+
+  /* ── Screen switching ──────────────────────────── */
+  function showScreen(name) {
+    ['intro','level','question','complete'].forEach(s =>
+      document.getElementById('screen-' + s).classList.toggle('hidden', s !== name)
+    );
+  }
+
+  /* ── DOM builder ───────────────────────────────── */
+  function makeSw(num, stateClass, onClick) {
+    const div = document.createElement('div');
+    div.className = 'sw ' + stateClass;
+    if (num != null) {
+      const img = document.createElement('img');
+      img.src = SWITCH_IMG[num];
+      img.alt = String(num);
+      div.appendChild(img);
+    }
+    if (onClick) {
+      /* hover sound — throttled so rapid mouse moves don't stack */
+      let hoverCooldown = false;
+      div.addEventListener('mouseenter', () => {
+        if (hoverCooldown) return;
+        sfxHover();
+        hoverCooldown = true;
+        setTimeout(() => { hoverCooldown = false; }, 80);
+      });
+      /* click sound fires immediately; game logic fires after */
+      div.addEventListener('click', () => { sfxClick(); onClick(); });
+    }
+    return div;
+  }
+
+  /* ── Render question screen ────────────────────── */
+  function renderQuestion() {
+    const cfg     = ROWS_CONFIG[currentRow];
+    const row     = grid[currentRow];
+    const correct = getCorrect(cfg.pattern, row.length);
+
+    const isRowComplete = phase === 'row-complete';
+
+    /* ── Panel & bot-bar state ── */
+    const panel  = document.getElementById('main-panel');
+    const botBar = document.getElementById('bot-bar');
+    panel.classList.toggle('row-complete', isRowComplete);
+    botBar.style.visibility = isRowComplete ? 'hidden' : 'visible';
+
+    /* Well done overlay */
+    const wellDoneEl = document.getElementById('well-done-msg');
+    if (isRowComplete) {
+      wellDoneEl.classList.remove('hidden');
+      wellDoneEl.style.animation = 'none';
+      wellDoneEl.offsetHeight;
+      wellDoneEl.style.animation = '';
+    } else {
+      wellDoneEl.classList.add('hidden');
+    }
+
+    /* Bot text */
+    const msgs = {
+      question:       'Tap the correct switch.',
+      wrong:          'Uh-oh! Try again!',
+      hint:           "Here's a hint — look for the glowing switch!",
+      'row-complete': 'Well done! Row powered up! ⚡',
+    };
+    document.getElementById('bot-text').textContent = msgs[phase] || '';
+
+    /* Wrong answer overlay */
+    const wrongEl = document.getElementById('wrong-msg');
+    if (phase === 'wrong') {
+      wrongEl.classList.remove('hidden');
+      wrongEl.style.animation = 'none';
+      wrongEl.offsetHeight;
+      wrongEl.style.animation = '';
+    } else {
+      wrongEl.classList.add('hidden');
+    }
+
+    /* ── Power button ── */
+    const swRow = document.getElementById('switch-row');
+    swRow.innerHTML = '';
+
+    const pwImg = document.createElement('img');
+    pwImg.className = 'power-btn' + (row.length >= TOTAL ? ' pulsing' : '');
+    pwImg.src = row.length >= TOTAL ? 'assets/Green button.png' : 'assets/Red button.png';
+    pwImg.alt = row.length >= TOTAL ? 'ON' : 'OFF';
+    swRow.appendChild(pwImg);
+
+    /* ── 8 switch slots ── */
+    for (let i = 0; i < TOTAL; i++) {
+      const isFilled  = i < row.length;
+      const isNew     = isFilled && i === row.length - 1 && i >= PREFILLED;
+      const isWrong   = wrongAnswer != null && i === row.length && phase === 'wrong';
+
+      if (isRowComplete) {
+        /* All 8 filled with cyan outline */
+        swRow.appendChild(makeSw(row[i], 'complete-fill'));
+      } else if (isWrong) {
+        swRow.appendChild(makeSw(wrongAnswer, 'wrong'));
+      } else if (isFilled) {
+        swRow.appendChild(makeSw(row[i], isNew ? 'new' : 'filled'));
+      } else {
+        const div = document.createElement('div');
+        div.className = 'sw empty' + (i === row.length ? ' next-slot' : '');
+        swRow.appendChild(div);
+      }
+    }
+
+    /* ── Options ── */
+    const optArea = document.getElementById('options-area');
+    optArea.innerHTML = '';
+    if (isRowComplete) { optArea.classList.add('invisible'); return; }
+    optArea.classList.remove('invisible');
+    cfg.options.forEach(opt => {
+      const isCorrect  = opt === correct;
+      const cls        = (showHint && isCorrect) ? 'hint' : 'option';
+      optArea.appendChild(makeSw(opt, cls, () => handleAnswer(opt)));
+    });
+  }
+
+  /* ── Game flow ─────────────────────────────────── */
+  function handleStart() {
+    const cfg = ROWS_CONFIG[currentRow];
+    document.getElementById('level-name').textContent = cfg.label;
+    document.getElementById('level-sub').textContent  =
+      'Complete the pattern: ' + cfg.pattern.join(', ') + ', ' + cfg.pattern.join(', ') + '…';
+    showScreen('level');
+  }
+
+  function handleLevelStart() {
+    phase = 'question';
+    showScreen('question');
+    renderQuestion();
+  }
+
+  function handleAnswer(val) {
+    if (phase !== 'question' && phase !== 'hint') return;
+    if (timer) clearTimeout(timer);
+
+    const cfg     = ROWS_CONFIG[currentRow];
+    const correct = getCorrect(cfg.pattern, grid[currentRow].length);
+
+    if (val === correct) {
+      const pts   = showHint ? 5 : wrongCount === 0 ? 15 : 10;
+      wrongCount  = 0; wrongAnswer = null; showHint = false;
+      streak++; score += pts;
+      grid[currentRow] = [...grid[currentRow], val];
+
+      if (grid[currentRow].length >= TOTAL) {
+        sfxRowComplete();
+        phase = 'row-complete';
+        renderQuestion();
+        timer = setTimeout(() => {
+          if (currentRow + 1 >= ROWS_CONFIG.length) {
+            document.getElementById('final-score').textContent  = score;
+            document.getElementById('final-streak').textContent = streak + '🔥';
+            showScreen('complete');
+          } else {
+            currentRow++;
+            const next = ROWS_CONFIG[currentRow];
+            document.getElementById('level-name').textContent = next.label;
+            document.getElementById('level-sub').textContent  =
+              'Complete the pattern: ' + next.pattern.join(', ') + ', ' + next.pattern.join(', ') + '…';
+            showScreen('level');
+          }
+        }, 1800);
+      } else {
+        sfxCorrect();
+        phase = 'question';
+        renderQuestion();
+      }
+    } else {
+      sfxWrong();
+      wrongAnswer = val; streak = 0; wrongCount++;
+      phase = wrongCount >= 2 ? 'hint' : 'wrong';
+      if (wrongCount >= 2) showHint = true;
+      renderQuestion();
+      timer = setTimeout(() => {
+        wrongAnswer = null; phase = 'question';
+        renderQuestion();
+      }, 1400);
+    }
+  }
+
+  function resetGame() {
+    if (timer) clearTimeout(timer);
+    phase = 'intro'; currentRow = 0;
+    wrongCount = 0; wrongAnswer = null;
+    showHint = false; score = 0; streak = 0;
+    initGrid();
+    showScreen('intro');
+  }
+
+  /* ── Boot ──────────────────────────────────────── */
+  initGrid();
+  showScreen('intro');
+</script>
+</body>
+</html>
