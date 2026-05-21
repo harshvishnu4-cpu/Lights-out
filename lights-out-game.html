@@ -27,10 +27,11 @@
     @keyframes fadeIn   { from { opacity:0; transform:translateY(6px); }  to { opacity:1; transform:translateY(0); } }
     @keyframes popIn    { from { opacity:0; transform:scale(0.45); }       to { opacity:1; transform:scale(1); } }
     @keyframes shake    { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);} 40%{transform:translateX(8px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(5px);} }
-    @keyframes hintGlow { 0%,100%{filter:brightness(1)   drop-shadow(0 0 6px rgba(0,229,255,.5));} 50%{filter:brightness(1.15) drop-shadow(0 0 18px rgba(0,229,255,1));} }
+    @keyframes hintGlow  { 0%,100%{filter:brightness(1)   drop-shadow(0 0 6px rgba(0,229,255,.5));} 50%{filter:brightness(1.15) drop-shadow(0 0 18px rgba(0,229,255,1));} }
     @keyframes pulse    { 0%,100%{filter:brightness(1);}  50%{filter:brightness(1.28) drop-shadow(0 0 14px #4afa7c);} }
     @keyframes float    { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
     @keyframes slideUp  { from{opacity:0;transform:translateY(32px);} to{opacity:1;transform:translateY(0);} }
+
 
     /* ════════════════════════════════════════════
        QUESTION SCREEN
@@ -41,12 +42,17 @@
       position: absolute;
       left: 38px; top: 28px;
       width: 1334px; height: 107px;
-      background: url('assets/Text box.png') center / 100% 100% no-repeat;
-      display: flex; align-items: center;
-      /* leave ~105px for the embedded robot face on the left of the image */
-      padding-left: 122px; padding-right: 24px;
+    }
+    #bot-bar img {
+      position: absolute;
+      inset: 0;
+      width: 98%; height: 100%;
+      object-fit: fill;
     }
     #bot-text {
+      position: absolute;
+      left: 122px; right: 24px;
+      top: 45%; transform: translateY(-50%);
       font-family: 'Exo 2', sans-serif;
       font-size: 28px; font-weight: 700;
       color: #dff4f8;
@@ -66,7 +72,7 @@
     /* Switch row – sits in the upper portion of the panel */
     #switch-row {
       position: absolute;
-      left: 0; top: 42px;
+      left: 0;  top: 92px;;
       width: 100%;
       display: flex;
       align-items: center;
@@ -97,17 +103,26 @@
       border-radius: 8px;
     }
 
+    @keyframes correctGlow {
+      0%   { box-shadow: 0 0  0px  0px rgba(74,250,124,0); }
+      25%  { box-shadow: 0 0 22px 10px rgba(74,250,124,.95), 0 0 50px 20px rgba(74,250,124,.45); }
+      100% { box-shadow: 0 0  0px  0px rgba(74,250,124,0); }
+    }
+
     .sw.filled img  { animation: fadeIn 0.3s ease both; }
+    .sw.new         { animation: correctGlow 0.75s ease-out both; }
     .sw.new    img  { animation: popIn  0.4s ease both; }
 
     .sw.empty {
       background: rgba(38, 40, 52, 0.45);
-      border: 2px dashed rgba(180, 110, 30, 0.55);
+      border: 2px dashed rgba(224, 136, 40, 0.55);
+      border-radius: 8px;
     }
     .sw.empty.next-slot {
-      background: rgba(20, 22, 34, 0.55);
-      border: 3px dashed #e08828;
-      box-shadow: inset 0 0 14px rgba(0,0,0,.5), 0 0 8px rgba(220,136,40,.3);
+      background: rgba(20, 22, 34, 0.60);
+      border: 3px dashed #f0952a;
+      border-radius: 10px;
+      position: relative;
     }
 
     .sw.wrong { animation: shake 0.45s ease; }
@@ -116,6 +131,16 @@
       box-shadow: 0 0 18px rgba(255,50,50,.7);
       border-radius: 8px;
     }
+
+    .sw.wrong-option { animation: shake 0.45s ease; }
+    .sw.wrong-option img {
+      border: 3px solid #ff3333;
+      box-shadow: 0 0 18px rgba(255,50,50,.8), 0 0 40px rgba(255,0,0,.5);
+      border-radius: 8px;
+    }
+
+    /* All switches shake together on wrong answer */
+    #switch-row.shaking .sw { animation: shake 0.45s ease; }
 
     /* Completed-row switch styling (cyan outline on all 8) */
     .sw.complete-fill img {
@@ -134,35 +159,49 @@
     #main-panel.row-complete {
       top: 40px;
       height: 736px;
-      border-radius: 22px;
+      border-radius: 20px;
+      background: #1e2233;
       animation: greenBorderPulse 1.2s ease-in-out infinite;
-      transition: top 0.35s ease, height 0.35s ease;
+      transition: top 0.35s ease, height 0.35s ease, background 0.3s ease;
     }
 
-    /* Vertically center the switch row inside the enlarged panel */
+    /* Centre switch row when row is complete */
     #main-panel.row-complete #switch-row {
       top: 50%;
       transform: translateY(-50%);
-    }
-
-    /* Blur switches behind the Well done text */
-    #main-panel.row-complete #switch-row {
-      filter: blur(3.5px);
-      opacity: 0.55;
       transition: filter 0.3s ease, opacity 0.3s ease;
     }
 
+    /* Hide switches when Well done appears */
+    #main-panel.well-done-active #switch-row {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
     /* Well done overlay */
+    @keyframes wellDonePop {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes robotDance {
+      0%,100% { transform: translateY(0)    rotate(0deg);   }
+      15%     { transform: translateY(-18px) rotate(-8deg);  }
+      30%     { transform: translateY(0)    rotate(0deg);   }
+      45%     { transform: translateY(-14px) rotate(7deg);   }
+      60%     { transform: translateY(0)    rotate(0deg);   }
+      75%     { transform: translateY(-10px) rotate(-5deg);  }
+      90%     { transform: translateY(0)    rotate(0deg);   }
+    }
+
     #well-done-msg {
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'Exo 2', sans-serif;
-      font-size: 100px;
-      font-weight: 900;
-      color: #00e8ff;
-      letter-spacing: 2px;
-      text-shadow: 0 0 40px rgba(0,232,255,.7), 0 0 80px rgba(0,200,255,.35), 0 4px 0 rgba(0,0,0,.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
       pointer-events: none;
       z-index: 20;
       white-space: nowrap;
@@ -170,9 +209,20 @@
     }
     #well-done-msg.hidden { display: none !important; }
 
-    @keyframes wellDonePop {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
-      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #robot-dance {
+      width: 160px;
+      height: auto;
+      animation: robotDance 1s ease-in-out infinite;
+      filter: drop-shadow(0 0 18px rgba(0,220,255,.45));
+    }
+
+    #well-done-text {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 100px;
+      font-weight: 900;
+      color: #00e8ff;
+      letter-spacing: 2px;
+      text-shadow: 0 0 40px rgba(0,232,255,.7), 0 0 80px rgba(0,200,255,.35), 0 4px 0 rgba(0,0,0,.45);
     }
 
     /* Wrong answer message */
@@ -186,7 +236,7 @@
       gap: 6px;
       pointer-events: none;
       z-index: 10;
-      animation: wrongPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+     
     }
     #wrong-msg.hidden { display: none !important; }
 
@@ -235,27 +285,95 @@
       justify-content: center;
       gap: 18px;
     }
-    #options-area.invisible { visibility: hidden; }
+    #options-area.invisible { visibility: hidden; pointer-events: none; }
+
+    @keyframes optionsSlideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    #options-area.hidden-initially {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #options-area.reveal {
+      animation: optionsSlideUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+    }
 
     /* Option switch tiles (same size as row switches) */
     .sw.option {
       cursor: pointer;
       transition: transform 0.13s;
     }
-    .sw.option img {
-      border: 2.5px solid #00c8d4;
-      box-shadow: 0 0 10px rgba(0,200,212,.55);
-      border-radius: 8px;
-    }
     .sw.option:hover               { transform: scale(1.08); }
-    .sw.option:hover img           { box-shadow: 0 0 22px rgba(0,229,255,.9); }
 
-    .sw.hint { cursor: pointer; animation: hintGlow 1s ease-in-out infinite; }
+    .sw.hint { cursor: pointer; position: relative; animation: hintGlow 1s ease-in-out infinite; }
     .sw.hint img {
       border: 2.5px solid #00e5ff;
       border-radius: 8px;
     }
     .sw.hint:hover { transform: scale(1.08); }
+
+
+    /* ════════════════════════════════════════════
+       LEVEL INTRO SCREEN
+    ════════════════════════════════════════════ */
+    .level-stage-lbl {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 15px; font-weight: 600;
+      letter-spacing: 8px;
+      color: rgba(0,229,255,.55);
+      text-transform: uppercase;
+      margin-bottom: -12px;
+    }
+    .level-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 96px; letter-spacing: 6px;
+      color: #00e5ff;
+      text-shadow: 0 0 40px rgba(0,229,255,.6), 0 0 80px rgba(0,200,255,.25);
+    }
+    .level-pattern-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px;
+      margin-top: 4px;
+    }
+    .level-pattern-lbl {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 18px; color: rgba(160,190,210,.65);
+    }
+    .level-pattern-tiles {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .level-tile {
+      width: 72px; height: 72px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(18, 28, 48, 0.82);
+      border: 1.5px solid rgba(0, 210, 230, 0.42);
+      border-radius: 16px;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 40px; font-weight: 800;
+      color: #00d8f0;
+      text-shadow: 0 0 12px rgba(0,210,235,.55);
+    }
+    .level-tile-dots {
+      width: 72px; height: 72px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      background: rgba(14, 22, 40, 0.65);
+      border: 1.5px solid rgba(0,210,230,.20);
+      border-radius: 16px;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 16px; font-weight: 700;
+      color: rgba(0,210,230,.45);
+      letter-spacing: 3px;
+    }
+    .level-tile-dots::before {
+      content: '';
+      position: absolute;
+      top: 9px; right: 9px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(0,210,230,.50);
+    }
 
     /* ════════════════════════════════════════════
        INTRO / LEVEL / COMPLETE SCREENS
@@ -302,6 +420,14 @@
     .gold  { color: #ffc83d; }
     .green { color: #4afa7c; }
 
+    .btn-start-img {
+      background: none; border: none; padding: 0; cursor: pointer;
+      transition: transform 0.15s, filter 0.15s;
+    }
+    .btn-start-img img { width: 220px; display: block; }
+    .btn-start-img:hover { transform: scale(1.06); filter: brightness(1.12) drop-shadow(0 0 14px rgba(0,220,200,.55)); }
+    .btn-start-img:active { transform: scale(0.97); }
+
     .btn-primary {
       padding: 16px 60px; font-size: 24px; font-weight: 800;
       font-family: 'Exo 2', sans-serif;
@@ -325,6 +451,79 @@
     .btn-secondary:hover { background: rgba(0,200,220,.28); }
 
     .hidden { display: none !important; }
+
+    /* ════════════════════════════════════════════
+       END / COMPLETE SCREEN
+    ════════════════════════════════════════════ */
+    #screen-complete {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.55s ease both;
+    }
+
+    #end-panel {
+      position: relative;
+      width: 1305px; height: 736px;
+      background: #1e2233;
+      border-radius: 22px;
+      animation: greenBorderPulse 1.2s ease-in-out infinite;
+      animation: greenBorderPulse 1.2s ease-in-out infinite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 52px;
+    }
+
+    #end-title {
+      display: none;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 72px; font-weight: 900;
+      color: #00e8ff; letter-spacing: 3px;
+      text-shadow: 0 0 40px rgba(0,232,255,.75), 0 0 80px rgba(0,200,255,.4), 0 4px 0 rgba(0,0,0,.5);
+      white-space: nowrap;
+      text-align: center;
+      animation: wellDonePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    #end-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .end-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .end-row .power-btn {
+      width: 118px; height: 104px;
+    }
+
+    .end-row .sw {
+      width: 102px; height: 126px;
+    }
+
+    #end-play-again {
+      padding: 14px 56px; font-size: 22px; font-weight: 800;
+      font-family: 'Exo 2', sans-serif;
+      background: linear-gradient(135deg, #00b8c4 0%, #00d4a8 100%);
+      color: #fff; border: none; border-radius: 14px;
+      cursor: pointer; letter-spacing: 1px;
+      box-shadow: 0 4px 22px rgba(0,200,180,.42), inset 0 1px 0 rgba(255,255,255,.2);
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+    #end-play-again:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(0,200,180,.6); }
   </style>
 </head>
 <body>
@@ -334,28 +533,33 @@
   <!-- ── INTRO ─────────────────────────────────── -->
   <div id="screen-intro" class="overlay">
     <div class="title-xl">⚡ LIGHTS OUT</div>
-    <p class="body-text">
-      Complete number patterns to power up each row.<br>
-      Fill all 8 switches to bring the lights back on!
-    </p>
-    <button class="btn-primary" onclick="handleStart()">Let's Play ▶</button>
+    <button class="btn-start-img" onclick="handleStart()">
+      <img src="assets/start.png" alt="Start" />
+    </button>
   </div>
 
   <!-- ── LEVEL INTRO ───────────────────────────── -->
   <div id="screen-level" class="overlay hidden">
-    <div id="level-name" class="title-xl level-float"></div>
-    <div id="level-sub"  class="body-text"></div>
-    <button class="btn-secondary" onclick="handleLevelStart()">Start →</button>
+    <div class="level-stage-lbl"></div>
+    <div id="level-name" class="level-title level-float"></div>
+    <div class="level-pattern-wrap">
+      <div class="level-pattern-lbl">pattern:</div>
+      <div id="level-pattern-tiles" class="level-pattern-tiles"></div>
+    </div>
   </div>
 
   <!-- ── QUESTION ──────────────────────────────── -->
   <div id="screen-question" class="hidden">
     <div id="bot-bar">
+      <img src="assets/Text box.png" alt="" />
       <span id="bot-text">Tap the correct switch.</span>
     </div>
     <div id="main-panel">
       <div id="switch-row"></div>
-      <div id="well-done-msg" class="hidden">Well done!</div>
+      <div id="well-done-msg" class="hidden">
+        <img id="robot-dance" src="assets/robot dance.png" alt="robot" />
+        <span id="well-done-text">Well done!</span>
+      </div>
       <div id="wrong-msg" class="hidden">
       </div>
       <div id="options-area"></div>
@@ -363,25 +567,81 @@
   </div>
 
   <!-- ── COMPLETE ──────────────────────────────── -->
-  <div id="screen-complete" class="overlay hidden">
-    <div class="title-green">Well Done! ⚡</div>
-    <p class="body-text">All systems powered up!</p>
-    <div class="score-box">
-      <div>
-        <div class="s-lbl">Final Score</div>
-        <div id="final-score" class="s-val gold">0</div>
-      </div>
-      <div>
-        <div class="s-lbl">Best Streak</div>
-        <div id="final-streak" class="s-val green">0🔥</div>
-      </div>
+  <div id="screen-complete" class="hidden">
+    <div id="end-panel">
+      <div id="end-title">Great Job!</div>
+      <div id="end-rows"></div>
+      <button id="end-play-again" onclick="resetGame()">Play Again ↻</button>
     </div>
-    <button class="btn-primary" onclick="resetGame()">Play Again ↻</button>
   </div>
 
 </div><!-- #canvas -->
 
 <script>
+  /* ── Voice lines ─────────────────────────────────── */
+  const voiceTapCorrect = new Audio('audio/tap the correct switch .ogg');
+  const voiceUhOh       = new Audio('audio/Uh-oh! Try again!.ogg');
+  const voiceHint       = new Audio("audio/Check the pattern again.ogg");
+
+  /* ── Switch appear sounds ────────────────────────── */
+  const sfxSwitch3 = new Audio('audio/3.ogg');
+  const sfxSwitch5 = new Audio('audio/5.ogg');
+  const sfxSwitch4  = new Audio('audio/4.ogg');
+  const sfxSwitch7  = new Audio('audio/7.ogg');
+  const sfxSwitch10 = new Audio('audio/10.ogg');
+  const sfxSwitch11 = new Audio('audio/11.ogg');
+  const sfxSwitch13 = new Audio('audio/13.ogg');
+
+  const LEVEL_SWITCH_SOUNDS = {
+    0: [sfxSwitch3, sfxSwitch5],
+    1: [sfxSwitch4, sfxSwitch7],
+    2: [sfxSwitch7, sfxSwitch10],
+    3: [sfxSwitch11, sfxSwitch13],
+  };
+
+  function playSwitchAppear(index) {
+    const sounds = LEVEL_SWITCH_SOUNDS[currentRow];
+    if (!sounds) return;
+    const snd = sounds[index % 2];
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+  }
+
+  let _voicePlaying = false;
+  const _voiceQueue = [];
+
+  function _setOptionsLock(locked) {
+    const el = document.getElementById('options-area');
+    if (el) el.style.pointerEvents = locked ? 'none' : '';
+  }
+
+  function _advanceQueue() {
+    if (_voiceQueue.length === 0) {
+      _voicePlaying = false;
+      _setOptionsLock(false);
+      return;
+    }
+    const { text, audio } = _voiceQueue.shift();
+    _voicePlaying = true;
+    _setOptionsLock(true);
+    document.getElementById('bot-text').textContent = text;
+    audio.currentTime = 0;
+    audio.onended = _advanceQueue;
+    audio.play().catch(_advanceQueue);
+  }
+
+  function queueBotText(text, audio) {
+    _voiceQueue.push({ text, audio });
+    if (!_voicePlaying) _advanceQueue();
+  }
+
+  function clearVoiceQueue() {
+    _voiceQueue.length = 0;
+    _voicePlaying = false;
+    _setOptionsLock(false);
+    [voiceTapCorrect, voiceUhOh, voiceHint].forEach(a => { a.pause(); a.currentTime = 0; });
+  }
+
   /* ── SFX (Web Audio API — no external files) ─────── */
   let _ctx = null;
   function ac() {
@@ -489,12 +749,21 @@
 
   /* ── Game config ───────────────────────────────── */
   const ROWS_CONFIG = [
-    { pattern: [3, 5],   options: [3, 6, 5, 4],    label: 'Tutorial' },
+    { pattern: [3, 5],   options: [3, 6, 5, 4],    label: 'Level 1'  },
     { pattern: [4, 7],   options: [4, 5, 8, 7],    label: 'Level 2'  },
     { pattern: [7, 10],  options: [10, 9, 11, 7],  label: 'Level 3'  },
-    { pattern: [11, 13], options: [13, 12, 11, 10], label: 'Level 4' },
+    { pattern: [11, 13], options: [13, 12, 11, 10], label: 'Level 4',
+      scaffold: { 0: 11, 1: 13, 2: 11, 4: 11, 7: 13 } },
   ];
   const TOTAL = 8, PREFILLED = 5;
+
+  function getUserPositions(cfg) {
+    if (!cfg.scaffold) return null;
+    const s = new Set(Object.keys(cfg.scaffold).map(Number));
+    const pos = [];
+    for (let i = 0; i < TOTAL; i++) if (!s.has(i)) pos.push(i);
+    return pos;
+  }
 
   /* ── State ─────────────────────────────────────── */
   let phase       = 'intro';
@@ -503,20 +772,28 @@
   let wrongCount  = 0;
   let wrongAnswer = null;
   let showHint    = false;
+  let justPlaced  = false;
+  let firstRender = false;
   let score       = 0;
   let streak      = 0;
   let timer       = null;
+  let levelTimer  = null;
 
   function initGrid() {
     grid = ROWS_CONFIG.map(r => {
+      if (r.scaffold) return [];
       const full = [];
       for (let i = 0; i < TOTAL; i++) full.push(r.pattern[i % r.pattern.length]);
       return full.slice(0, PREFILLED);
     });
   }
 
-  function getCorrect(pattern, filledCount) {
-    return pattern[filledCount % pattern.length];
+  function getCorrect(cfg, filledCount) {
+    if (cfg.scaffold) {
+      const pos = getUserPositions(cfg);
+      return cfg.pattern[pos[filledCount] % cfg.pattern.length];
+    }
+    return cfg.pattern[filledCount % cfg.pattern.length];
   }
 
   /* ── Screen switching ──────────────────────────── */
@@ -555,7 +832,7 @@
   function renderQuestion() {
     const cfg     = ROWS_CONFIG[currentRow];
     const row     = grid[currentRow];
-    const correct = getCorrect(cfg.pattern, row.length);
+    const correct = getCorrect(cfg, row.length);
 
     const isRowComplete = phase === 'row-complete';
 
@@ -563,27 +840,16 @@
     const panel  = document.getElementById('main-panel');
     const botBar = document.getElementById('bot-bar');
     panel.classList.toggle('row-complete', isRowComplete);
+    if (!isRowComplete) panel.classList.remove('well-done-active');
     botBar.style.visibility = isRowComplete ? 'hidden' : 'visible';
 
-    /* Well done overlay */
+    /* Well done overlay — shown only after 1 s delay (see handleAnswer) */
     const wellDoneEl = document.getElementById('well-done-msg');
-    if (isRowComplete) {
-      wellDoneEl.classList.remove('hidden');
-      wellDoneEl.style.animation = 'none';
-      wellDoneEl.offsetHeight;
-      wellDoneEl.style.animation = '';
-    } else {
+    if (!isRowComplete) {
       wellDoneEl.classList.add('hidden');
     }
+    /* actual reveal is handled by the timer in handleAnswer, not here */
 
-    /* Bot text */
-    const msgs = {
-      question:       'Tap the correct switch.',
-      wrong:          'Uh-oh! Try again!',
-      hint:           "Here's a hint — look for the glowing switch!",
-      'row-complete': 'Well done! Row powered up! ⚡',
-    };
-    document.getElementById('bot-text').textContent = msgs[phase] || '';
 
     /* Wrong answer overlay */
     const wrongEl = document.getElementById('wrong-msg');
@@ -599,29 +865,84 @@
     /* ── Power button ── */
     const swRow = document.getElementById('switch-row');
     swRow.innerHTML = '';
+    swRow.classList.toggle('shaking', phase === 'wrong');
+    if (phase === 'wrong') { void swRow.offsetWidth; }
+
+    const userPositions = getUserPositions(cfg);
+    const rowFull       = userPositions ? row.length >= userPositions.length : row.length >= TOTAL;
 
     const pwImg = document.createElement('img');
-    pwImg.className = 'power-btn' + (row.length >= TOTAL ? ' pulsing' : '');
-    pwImg.src = row.length >= TOTAL ? 'assets/Green button.png' : 'assets/Red button.png';
-    pwImg.alt = row.length >= TOTAL ? 'ON' : 'OFF';
+    pwImg.className = 'power-btn' + (rowFull ? ' pulsing' : '');
+    pwImg.src = rowFull ? 'assets/Green button.png' : 'assets/Red button.png';
+    pwImg.alt = rowFull ? 'ON' : 'OFF';
+    if (firstRender) {
+      pwImg.style.animation = 'fadeIn 0.6s ease both';
+    }
     swRow.appendChild(pwImg);
 
     /* ── 8 switch slots ── */
+    const stepMs   = 900;
+    const offsetMs = 900;
+
     for (let i = 0; i < TOTAL; i++) {
-      const isFilled  = i < row.length;
-      const isNew     = isFilled && i === row.length - 1 && i >= PREFILLED;
-      const isWrong   = wrongAnswer != null && i === row.length && phase === 'wrong';
+      const delayMs = offsetMs + i * stepMs;
+      const delay   = firstRender ? `${delayMs / 1000}s` : '0s';
 
       if (isRowComplete) {
-        /* All 8 filled with cyan outline */
-        swRow.appendChild(makeSw(row[i], 'complete-fill'));
-      } else if (isWrong) {
+        swRow.appendChild(makeSw(cfg.pattern[i % cfg.pattern.length], 'complete-fill'));
+        continue;
+      }
+
+      /* ── Scaffold layout (level 4) ── */
+      if (cfg.scaffold) {
+        if (cfg.scaffold[i] !== undefined) {
+          /* pre-filled scaffold position */
+          const el = makeSw(cfg.scaffold[i], 'filled');
+          const img = el.querySelector('img');
+          if (img) { img.style.animationDelay = delay; img.style.animationDuration = firstRender ? '0.6s' : ''; }
+          swRow.appendChild(el);
+          if (firstRender && LEVEL_SWITCH_SOUNDS[currentRow]) setTimeout(() => playSwitchAppear(i), delayMs);
+        } else {
+          /* user-fill position */
+          const userIdx   = userPositions.indexOf(i);
+          const answered  = userIdx < row.length;
+          const isCurrent = userIdx === row.length;
+          const isWrong   = wrongAnswer != null && isCurrent && phase === 'wrong';
+          if (isWrong) {
+            swRow.appendChild(makeSw(wrongAnswer, 'wrong'));
+          } else if (answered) {
+            const isNew = justPlaced && userIdx === row.length - 1;
+            const el = makeSw(row[userIdx], isNew ? 'new' : 'filled');
+            if (isNew) el.style.animationDelay = delay;
+            swRow.appendChild(el);
+          } else {
+            const div = document.createElement('div');
+            div.className = 'sw empty' + (isCurrent ? ' next-slot' : '');
+            if (firstRender) { div.style.animation = 'fadeIn 0.6s ease both'; div.style.animationDelay = delay; }
+            swRow.appendChild(div);
+          }
+        }
+        continue;
+      }
+
+      /* ── Standard consecutive layout ── */
+      const isFilled = i < row.length;
+      const isNew    = justPlaced && isFilled && i === row.length - 1 && i >= PREFILLED;
+      const isWrong  = wrongAnswer != null && i === row.length && phase === 'wrong';
+
+      if (isWrong) {
         swRow.appendChild(makeSw(wrongAnswer, 'wrong'));
       } else if (isFilled) {
-        swRow.appendChild(makeSw(row[i], isNew ? 'new' : 'filled'));
+        const el = makeSw(row[i], isNew ? 'new' : 'filled');
+        const img = el.querySelector('img');
+        if (img) { img.style.animationDelay = delay; img.style.animationDuration = firstRender ? '0.6s' : ''; }
+        if (isNew) el.style.animationDelay = delay;
+        swRow.appendChild(el);
+        if (firstRender && LEVEL_SWITCH_SOUNDS[currentRow]) setTimeout(() => playSwitchAppear(i), delayMs);
       } else {
         const div = document.createElement('div');
         div.className = 'sw empty' + (i === row.length ? ' next-slot' : '');
+        if (firstRender) { div.style.animation = 'fadeIn 0.6s ease both'; div.style.animationDelay = delay; }
         swRow.appendChild(div);
       }
     }
@@ -630,27 +951,58 @@
     const optArea = document.getElementById('options-area');
     optArea.innerHTML = '';
     if (isRowComplete) { optArea.classList.add('invisible'); return; }
-    optArea.classList.remove('invisible');
+    optArea.classList.remove('invisible', 'reveal', 'hidden-initially');
     cfg.options.forEach(opt => {
-      const isCorrect  = opt === correct;
-      const cls        = (showHint && isCorrect) ? 'hint' : 'option';
-      optArea.appendChild(makeSw(opt, cls, () => handleAnswer(opt)));
+      const isCorrect      = opt === correct;
+      const isWrongOption  = phase === 'wrong-second' && opt === wrongAnswer;
+      const isLvl1Glow     = currentRow === 0 && opt === 5 && grid[0].length === PREFILLED;
+      const cls            = isWrongOption ? 'wrong-option'
+                           : (showHint && isCorrect) || isLvl1Glow ? 'hint'
+                           : 'option';
+      optArea.appendChild(makeSw(opt, cls, isWrongOption ? null : () => handleAnswer(opt)));
     });
   }
 
   /* ── Game flow ─────────────────────────────────── */
+  function buildLevelScreen(cfg) {
+    document.getElementById('level-name').textContent = cfg.label.toUpperCase();
+    const tiles = document.getElementById('level-pattern-tiles');
+    tiles.innerHTML = '';
+    [...cfg.pattern, ...cfg.pattern].forEach(num => {
+      const t = document.createElement('div');
+      t.className = 'level-tile';
+      t.textContent = num;
+      tiles.appendChild(t);
+    });
+    const dots = document.createElement('div');
+    dots.className = 'level-tile-dots';
+    dots.textContent = '···';
+    tiles.appendChild(dots);
+
+    if (levelTimer) clearTimeout(levelTimer);
+    levelTimer = setTimeout(handleLevelStart, 2500);
+  }
+
   function handleStart() {
-    const cfg = ROWS_CONFIG[currentRow];
-    document.getElementById('level-name').textContent = cfg.label;
-    document.getElementById('level-sub').textContent  =
-      'Complete the pattern: ' + cfg.pattern.join(', ') + ', ' + cfg.pattern.join(', ') + '…';
+    buildLevelScreen(ROWS_CONFIG[currentRow]);
     showScreen('level');
   }
 
   function handleLevelStart() {
     phase = 'question';
     showScreen('question');
-    renderQuestion();
+    firstRender = true; renderQuestion(); firstRender = false;
+
+    /* hide options until all switches have fully appeared, then slide in */
+    const optArea = document.getElementById('options-area');
+    optArea.classList.add('hidden-initially');
+    optArea.classList.remove('reveal');
+    const unlockDelay = 900 + (TOTAL - 1) * 900 + 650;
+    setTimeout(() => {
+      optArea.classList.remove('hidden-initially');
+      optArea.classList.add('reveal');
+      queueBotText('Tap the correct switch.', voiceTapCorrect);
+    }, unlockDelay);
   }
 
   function handleAnswer(val) {
@@ -658,52 +1010,106 @@
     if (timer) clearTimeout(timer);
 
     const cfg     = ROWS_CONFIG[currentRow];
-    const correct = getCorrect(cfg.pattern, grid[currentRow].length);
+    const correct = getCorrect(cfg, grid[currentRow].length);
 
     if (val === correct) {
+      if (currentRow === 0 && val === 5) { sfxSwitch5.currentTime = 0; sfxSwitch5.play().catch(() => {}); }
+      if (currentRow === 0 && val === 3) { sfxSwitch3.currentTime = 0; sfxSwitch3.play().catch(() => {}); }
+      if (currentRow === 1 && val === 4) { sfxSwitch4.currentTime = 0; sfxSwitch4.play().catch(() => {}); }
+      if (currentRow === 1 && val === 7) { sfxSwitch7.currentTime = 0; sfxSwitch7.play().catch(() => {}); }
+      if (currentRow === 2 && val === 7)  { sfxSwitch7.currentTime = 0;  sfxSwitch7.play().catch(() => {}); }
+      if (currentRow === 2 && val === 10) { sfxSwitch10.currentTime = 0; sfxSwitch10.play().catch(() => {}); }
+      if (currentRow === 3 && val === 11) { sfxSwitch11.currentTime = 0; sfxSwitch11.play().catch(() => {}); }
+      if (currentRow === 3 && val === 13) { sfxSwitch13.currentTime = 0; sfxSwitch13.play().catch(() => {}); }
       const pts   = showHint ? 5 : wrongCount === 0 ? 15 : 10;
       wrongCount  = 0; wrongAnswer = null; showHint = false;
       streak++; score += pts;
       grid[currentRow] = [...grid[currentRow], val];
 
-      if (grid[currentRow].length >= TOTAL) {
-        sfxRowComplete();
-        phase = 'row-complete';
-        renderQuestion();
+      const _userPos = getUserPositions(cfg);
+      if (grid[currentRow].length >= (_userPos ? _userPos.length : TOTAL)) {
+        _setOptionsLock(true);
+        sfxCorrect();
+        phase = 'question';
+        justPlaced = true; renderQuestion(); justPlaced = false;
         timer = setTimeout(() => {
-          if (currentRow + 1 >= ROWS_CONFIG.length) {
-            document.getElementById('final-score').textContent  = score;
-            document.getElementById('final-streak').textContent = streak + '🔥';
-            showScreen('complete');
-          } else {
-            currentRow++;
-            const next = ROWS_CONFIG[currentRow];
-            document.getElementById('level-name').textContent = next.label;
-            document.getElementById('level-sub').textContent  =
-              'Complete the pattern: ' + next.pattern.join(', ') + ', ' + next.pattern.join(', ') + '…';
-            showScreen('level');
-          }
-        }, 1800);
+          sfxRowComplete();
+          phase = 'row-complete';
+          renderQuestion();           /* shows pattern, well-done still hidden */
+          setTimeout(() => {
+            document.getElementById('main-panel').classList.add('well-done-active');
+            const wd = document.getElementById('well-done-msg');
+            wd.classList.remove('hidden');
+            wd.style.animation = 'none';
+            wd.offsetHeight;
+            wd.style.animation = '';
+          }, 4000);
+          timer = setTimeout(() => {
+            if (currentRow + 1 >= ROWS_CONFIG.length) {
+              showEndScreen();
+              showScreen('complete');
+            } else {
+              currentRow++;
+              buildLevelScreen(ROWS_CONFIG[currentRow]);
+              showScreen('level');
+            }
+          }, 6500);
+        }, 1000);
       } else {
         sfxCorrect();
         phase = 'question';
-        renderQuestion();
+        justPlaced = true; renderQuestion(); justPlaced = false;
       }
     } else {
       sfxWrong();
+      queueBotText('Uh-oh! Try again!', voiceUhOh);
       wrongAnswer = val; streak = 0; wrongCount++;
-      phase = wrongCount >= 2 ? 'hint' : 'wrong';
-      if (wrongCount >= 2) showHint = true;
-      renderQuestion();
-      timer = setTimeout(() => {
-        wrongAnswer = null; phase = 'question';
+      if (wrongCount >= 2) {
+        phase = 'wrong-second';
         renderQuestion();
-      }, 1400);
+        timer = setTimeout(() => {
+          showHint = true;
+          phase = 'hint';
+          renderQuestion();
+          if (wrongCount === 2) queueBotText("Check the pattern again.", voiceHint);
+        }, 800);
+      } else {
+        phase = 'wrong';
+        renderQuestion();
+        timer = setTimeout(() => {
+          wrongAnswer = null; phase = 'question';
+          renderQuestion();
+          queueBotText('Tap the correct switch.', voiceTapCorrect);
+        }, 1400);
+      }
     }
+  }
+
+  function showEndScreen() {
+    const endRows = document.getElementById('end-rows');
+    endRows.innerHTML = '';
+    ROWS_CONFIG.forEach(cfg => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'end-row';
+
+      const pw = document.createElement('img');
+      pw.className = 'power-btn pulsing';
+      pw.src = 'assets/Green button.png';
+      pw.alt = 'ON';
+      rowEl.appendChild(pw);
+
+      for (let i = 0; i < TOTAL; i++) {
+        rowEl.appendChild(makeSw(cfg.pattern[i % cfg.pattern.length], 'complete-fill'));
+      }
+
+      endRows.appendChild(rowEl);
+    });
   }
 
   function resetGame() {
     if (timer) clearTimeout(timer);
+    if (levelTimer) clearTimeout(levelTimer);
+    clearVoiceQueue();
     phase = 'intro'; currentRow = 0;
     wrongCount = 0; wrongAnswer = null;
     showHint = false; score = 0; streak = 0;
@@ -711,9 +1117,11 @@
     showScreen('intro');
   }
 
+
   /* ── Boot ──────────────────────────────────────── */
   initGrid();
   showScreen('intro');
 </script>
 </body>
 </html>
+
